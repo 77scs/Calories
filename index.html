@@ -331,7 +331,7 @@ body.light .toast{background:rgba(255,255,255,.92)}
 'use strict';
 
 // ===== Config =====
-var USDA_KEY='DEMO_KEY',USDA_URL='https://api.nal.usda.gov/fdc/v1/foods/search',OFF_URL='https://world.openfoodfacts.org/cgi/search.pl';
+var USDA_KEY='DEMO_KEY',USDA_URL='https://api.nal.usda.gov/fdc/v1/foods/search',OFF_URL='https://world.openfoodfacts.org/cgi/search.pl',NINJAS_KEY='BqagS2Yv2byNtqMyVSoVq2OAt3KRUSALYwZDFkQg',NINJAS_URL='https://api.api-ninjas.com/v1/nutrition';
 var FC=new Set(['apple','banana','sandwich','orange','broccoli','carrot','hot dog','pizza','donut','cake','bowl']);
 var DB={apple:{n:'Pomme',k:52,g:182},banana:{n:'Banane',k:89,g:118},sandwich:{n:'Sandwich',k:250,g:200},orange:{n:'Orange',k:47,g:131},broccoli:{n:'Brocoli',k:34,g:100},carrot:{n:'Carotte',k:41,g:100},'hot dog':{n:'Hot Dog',k:247,g:100},pizza:{n:'Pizza',k:266,g:107},donut:{n:'Donut',k:452,g:50},cake:{n:'Gâteau',k:350,g:100},bowl:{n:'Bol',k:100,g:200},riz:{n:'Riz',k:130,g:150},pates:{n:'Pâtes',k:131,g:150},pain:{n:'Pain',k:265,g:50},oeuf:{n:'Œuf',k:155,g:50},poulet:{n:'Poulet',k:165,g:150},salade:{n:'Salade',k:15,g:100},soupe:{n:'Soupe',k:50,g:250},frites:{n:'Frites',k:312,g:100},burger:{n:'Burger',k:250,g:200},yaourt:{n:'Yaourt',k:61,g:125},fromage:{n:'Fromage',k:350,g:30},jambon:{n:'Jambon',k:145,g:50},poisson:{n:'Poisson',k:100,g:150},steak:{n:'Steak',k:250,g:150},tomate:{n:'Tomate',k:18,g:100},concombre:{n:'Concombre',k:15,g:100},pommedeterre:{n:'Pomme de terre',k:77,g:150},avocat:{n:'Avocat',k:160,g:100},noix:{n:'Noix',k:654,g:30},beurre:{n:'Beurre',k:717,g:10},lait:{n:'Lait',k:42,g:200},cafe:{n:'Café',k:1,g:200},soda:{n:'Soda',k:41,g:250},eau:{n:'Eau',k:0,g:250}};
 var AL={pomme:'apple',apple:'apple',banane:'banana',banana:'banana',sandwich:'sandwich',orange:'orange',brocoli:'broccoli',broccoli:'broccoli',carotte:'carrot',carrot:'carrot','hot dog':'hot dog',hotdog:'hot dog',pizza:'pizza',donut:'donut',gateau:'cake',gâteau:'cake',cake:'cake',bol:'bowl',bowl:'bowl',riz:'riz',rice:'riz',pates:'pates',pâtes:'pates',pasta:'pates',pain:'pain',bread:'pain',oeuf:'oeuf',œuf:'oeuf',egg:'oeuf',poulet:'poulet',chicken:'poulet',salade:'salade',salad:'salade',soupe:'soupe',soup:'soupe',frites:'frites',fries:'frites',burger:'burger',yaourt:'yaourt',yogurt:'yaourt',fromage:'fromage',cheese:'fromage',jambon:'jambon',ham:'jambon',poisson:'poisson',fish:'poisson',steak:'steak',tomate:'tomate',tomato:'tomate',concombre:'concombre',cucumber:'concombre','pomme de terre':'pommedeterre',potato:'pommedeterre',patate:'pommedeterre',avocat:'avocat',avocado:'avocat',noix:'noix',nuts:'noix',beurre:'beurre',butter:'beurre',lait:'lait',milk:'lait',cafe:'cafe',café:'cafe',coffee:'cafe',soda:'soda',eau:'eau',water:'eau'};
@@ -413,8 +413,17 @@ async function fo(f){
     return {n:p.product_name||f,k:k?Math.round(k):null};
   }catch(e){return null}
 }
+async function fn(k){
+  try{
+    var r=await fetch(NINJAS_URL+'?query='+encodeURIComponent(k),{headers:{'X-Api-Key':NINJAS_KEY}});
+    if(!r.ok)return null;var d=await r.json();
+    if(!d||!d.length)return null;
+    return {n:d[0].name,k:Math.round(d[0].calories),g:parseInt(d[0].serving_size_g)||100};
+  }catch(e){return null}
+}
 async function gn(k){
-  var r=await fd(k);if(r&&r.k)return{n:r.n,k:r.k,src:'USDA'};
+  var r=await fn(k);if(r&&r.k)return{n:r.n,k:r.k,src:'API Ninjas'};
+  r=await fd(k);if(r&&r.k)return{n:r.n,k:r.k,src:'USDA'};
   r=await fo(k);if(r&&r.k)return{n:r.n,k:r.k,src:'OpenFoodFacts'};
   var d=DB[k];if(d)return{n:d.n,k:d.k,src:'Locale'};
   var a=AL[k];if(a&&DB[a])return{n:DB[a].n,k:DB[a].k,src:'Locale'};
