@@ -323,9 +323,6 @@ body.light .toast{background:rgba(255,255,255,.92)}
 
 <input type="file" id="fileInput" accept="image/*">
 
-<script src="https://unpkg.com/@tensorflow/tfjs@4.21.0/dist/tf.min.js"></script>
-<script src="https://unpkg.com/@tensorflow-models/coco-ssd@2.2.3"></script>
-
 <script>
 (function(){
 'use strict';
@@ -350,11 +347,16 @@ var segs=[cb,ub],ri=$('refreshIndicator');
 var fmt=function(x){return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g,' ')};
 
 // ===== Model =====
+function loadScript(src){
+  return new Promise(function(res,rej){var s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.body.appendChild(s)});
+}
 function loadModel(){
-  ms.style.display='flex';mb.textContent='Chargement TF.js…';
+  ms.style.display='flex';mb.textContent='Chargement IA…';
   (async function(){
     try{
-      await tf.ready();mb.textContent='Téléchargement du modèle IA…';
+      await loadScript('https://unpkg.com/@tensorflow/tfjs@4.21.0/dist/tf.min.js');
+      await tf.ready();mb.textContent='Téléchargement du modèle…';
+      await loadScript('https://unpkg.com/@tensorflow-models/coco-ssd@2.2.3');
       model=await cocoSsd.load({base:'lite_mobilenet_v2'});modelReady=!0;
       ms.style.display='none';mb.className='model-bar ok';mb.textContent='IA prête';
       setTimeout(function(){mb.style.opacity='0';setTimeout(function(){mb.style.display='none'},400)},2500);
@@ -362,11 +364,11 @@ function loadModel(){
     }catch(e){
       ms.style.display='none';modelReady=!1;
       mb.className='model-bar er';
-      mb.textContent='IA indisponible (ajout manuel disponible)';
+      mb.textContent='IA indisponible (recherche manuelle disponible)';
     }
   })();
 }
-function en(){ab.disabled=!(modelReady&&imageData)}
+function en(){ab.disabled=!imageData}
 
 // ===== Image =====
 function loadImage(file){
@@ -414,21 +416,20 @@ async function fo(f){
   }catch(e){return null}
 }
 async function gn(k){
-  var r=await fd(k);if(r&&r.k)return{n:r.n,k:r.k,src:'USDA'};
-  r=await fo(k);if(r&&r.k)return{n:r.n,k:r.k,src:'OpenFoodFacts'};
   var d=DB[k];if(d)return{n:d.n,k:d.k,src:'Locale'};
   var a=AL[k];if(a&&DB[a])return{n:DB[a].n,k:DB[a].k,src:'Locale'};
+  var r=await fd(k);if(r&&r.k)return{n:r.n,k:r.k,src:'USDA'};
+  r=await fo(k);if(r&&r.k)return{n:r.n,k:r.k,src:'OpenFoodFacts'};
   return null;
 }
 
 // ===== Analysis =====
 async function analyze(){
   if(!imageData){toast('Ajoutez une photo','err');return}
-  if(!modelReady){toast('IA pas prête. Ajout manuel disponible.','err');return}
   lo.classList.add('on');lm.textContent='Analyse…';
   try{
-    var det=await detect(imageData.element);
-    if(!det.length){lo.classList.remove('on');toast('Aucun aliment détecté','err');showRes([]);return}
+    var det=modelReady?await detect(imageData.element):[];
+    if(!det.length){lo.classList.remove('on');toast(modelReady?'Aucun aliment détecté':'IA pas prête, utilisez la recherche','err');showRes([]);return}
     lm.textContent='Recherche des calories…';
     var items=[];
     for(var i=0;i<det.length;i++){
@@ -556,7 +557,6 @@ async function addM(){
   mi.value='';lo.classList.add('on');lm.textContent='Recherche…';
   try{
     var key=raw.toLowerCase(),n=await gn(key);
-    if(!n||n.k===null)n=await fd(key)||await fo(key);
     if(!n||n.k===null){lo.classList.remove('on');toast('Inconnu: '+raw,'err');return}
     var dk=AL[key]||key,db=DB[dk],gr=db?db.g:100;
     var item={c:dk,l:n.n,k:n.k,g:gr,src:n.src||'Locale',s:100};
